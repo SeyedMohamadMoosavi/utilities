@@ -2,6 +2,7 @@
 
 ## script for high-throuput parsing RASPA output files ##
 ## usage: python raspa_postprocess.py $PATH2DRECTORY $outputfilename
+## example: python raspa_postprocess.py run_dir adsorption_data.json
 ## The program finds all the output files in a directory and its subdirectories to
 ## extract the adsorption data.
 ## Seyed Mohamad Moosavi, May 2019
@@ -13,10 +14,6 @@ import math
 import os
 import subprocess
 import matplotlib.pyplot as plt
-
-# usage ./PP_full_isotherm workdirectory outname
-# e.g. ./PP_full_isotherm.py . isotherm.csv
-
 
 p=subprocess.Popen(["find",sys.argv[1],"-name","output_*"],
        stderr=subprocess.PIPE,stdout=subprocess.PIPE)
