@@ -24,6 +24,12 @@ raspa_files = [n for n in raspa_files if not n==""]
 MOFnames = ["_".join(s for s in n.strip().split("_")[1:-3]) for n in raspa_files]
 MOFnames = [n.split("output_")[-1] for n in MOFnames]
 pressures = [float(n.strip().split("_")[-1].split(".")[0]) for n in raspa_files]
+pressures = []
+for n in raspa_files:
+    if not "+" in n:
+        pressures.append(float(n.strip().split("_")[-1].split(".")[0]))
+    else:
+        pressures.append(float(".".join(s for s in n.strip().split("_")[-1].split(".")[0:2]) ))
 temperatures = [float(n.strip().split("_")[-2]) for n in raspa_files]
 print(len(MOFnames))
 all_data = {}
@@ -58,12 +64,12 @@ for raspafile,name,sim_temp,sim_p in zip(raspa_files,MOFnames,temperatures,press
             if "MolFraction" in line:
                 molfracs.append(float(line.strip().split()[1]))
 
-        if len(molfracs) == len(adsorbates):
-            for gas,mf in zip(adsorbates,molfracs):
-                adsorption_data[gas]={"molfraction":mf}
-        else:
+        if not len(molfracs) == len(adsorbates):
             print("Num. components doesn't match with molfracs, check this file: %s"%raspafile)
             continue
+        #else:
+        #    for gas,mf in zip(adsorbates,molfracs):
+        #        adsorption_data.update({"molfraction_%s"%gas:mf})
 
         # parsing the adsorption loadings or henry coefficients:
         if sim_p == 0:
@@ -83,14 +89,14 @@ for raspafile,name,sim_temp,sim_p in zip(raspa_files,MOFnames,temperatures,press
     
             if len(kHs) == len(adsorbates):
                 for gas,kH in zip(adsorbates,kHs):
-                    adsorption_data[gas].update({"%s_kH"%(gas):kH})
+                    adsorption_data.update({"%s_kH"%(gas):kH})
             else:
                 print("Num. components doesn't match with kH, check this file: %s"%raspafile)
                 continue
     
             if len(HOAs) == len(adsorbates):
                 for gas,hoa in zip(adsorbates,HOAs):
-                    adsorption_data[gas].update({"%s_widomHOA"%(gas):hoa})
+                    adsorption_data.update({"%s_widomHOA"%(gas):hoa})
             else:
                 print(HOAs)
                 print(adsorbates)
@@ -109,36 +115,49 @@ for raspafile,name,sim_temp,sim_p in zip(raspa_files,MOFnames,temperatures,press
             if len(loadings) == len(adsorbates):
                 for gas,loading,mf in zip(adsorbates,loadings,molfracs):
                     if mf == 1:
-                        adsorption_data[gas].update({"uptake_%s_pure_%.2f_%.0f"%(gas,sim_temp,sim_p):loading})
+                        adsorption_data.update({"uptake_%s_%.2f_%.0f"%(gas,sim_temp,sim_p):loading})
                     else:                                       
-                        adsorption_data[gas].update({"uptake_%s_mix_%.2f_%.0f"%(gas,sim_temp,sim_p):loading})
+                        adsorption_data.update({"uptake_%s_%.2f_%.0f"%(gas,sim_temp,sim_p):loading})
             else:
                 print("Num. components doesn't match with loadings, check this file: %s"%raspafile)
                 continue
         
-        print(adsorption_data)
+    print(adsorption_data)
 
     # do update or add new entry
-    try:
-        if len(adsorbates)>1:
-            mix_name = "mix_"+"_".join('%s_%0.4f'%(gas,mf) for gas,mf in zip(adsorbates,molfracs))+"_"
-            all_data[name][mix_name]=adsorption_data
-        else:
-            MOFname = all_data[name]
-            try:
-                all_data[name]["pure"][adsorbates[0]].update(adsorption_data[adsorbates[0]])
-            except KeyError:
-                all_data[name]["pure"]=adsorption_data
-    except KeyError:
+    if not name in all_data:
         all_data[name]={}
-        if len(adsorbates)>1:
-            mix_name = "mix_"+"_".join('%s_%0.4f'%(gas,mf) for gas,mf in zip(adsorbates,molfracs))+"_"
-            all_data[name][mix_name]=adsorption_data
-        else:
-            all_data[name]["pure"]=adsorption_data
+    
+    if len(adsorbates)>1:
+        prefix = "mix_"+"_".join('%s_%0.4f'%(gas,mf) for gas,mf in zip(adsorbates,molfracs))+"_"
+        for key in adsorption_data.keys():
+            all_data[name].update( {prefix+key: adsorption_data[key]})
+    else:
+        prefix = "pure_"
+        for key in adsorption_data.keys():
+            all_data[name].update( {prefix+key: adsorption_data[key]})
+    
+    
+    
+#     try:
+#             if  all_data[name]["pure"]:
+#                 try:
+#                     all_data[name]["pure"][adsorbates[0]].update(adsorption_data[adsorbates[0]])
+#                 except KeyError:
+#                     all_data[name]["pure"][adsorbates[0]] = adsorption_data
+#         except KeyError:
+#             all_data[name]["pure"]=adsorption_data
+
+    # except KeyError:
+    #     all_data[name]={}
+    #     if len(adsorbates)>1:
+    #         mix_name = "mix_"+"_".join('%s_%0.4f'%(gas,mf) for gas,mf in zip(adsorbates,molfracs))+"_"
+    #         all_data[name][mix_name]=adsorption_data
+    #     else:
+    #         all_data[name]["pure"]=adsorption_data
+
         
     
-print(all_data)    
                    
 with open(sys.argv[2],"w") as f:
     json.dump(all_data,f,indent=4)                   
