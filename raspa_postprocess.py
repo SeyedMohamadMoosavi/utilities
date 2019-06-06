@@ -42,6 +42,7 @@ for raspafile,name,sim_temp,sim_p in zip(raspa_files,MOFnames,temperatures,press
     with open(raspafile) as fi:
         isotherm_data = fi.readlines()
         if not isotherm_data[-2].startswith("The end time was "):
+            print("%s is not finished!"%raspafile)
             continue
         
         file_sections = {}
